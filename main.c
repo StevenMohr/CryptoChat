@@ -49,8 +49,13 @@ int main(int argc, char *argv[]) {
 }
 
 void print_help() {
-	/*TODO: write help stuff*/
-	printf("%s", "Something useful ..\n");
+	printf("%s",
+				"Help:\n"
+				"-l <port>\t\t Port to listen on for incoming connections.\n"
+			    "-c <hostname> <port>\t Connect to remote side using hostname and port.\n"
+			    "-i <nickname>\t\t Create keys for local user and use nickname\n"
+			    "-r <nickname>\t\t Change nickname of local user to <nickname>\n"
+			    "-a \t\t\t Show all known clients with their responding public-key");
 }
 
 void generate_keys(char* nickname) {
@@ -203,32 +208,6 @@ void myChat(int sock_nr) {
 
 // Starte Kommunikation
 }
-
-//void extended_euclid(BIGNUM* a, BIGNUM* b, BIGNUM* d, BIGNUM* s, BIGNUM* t) {
-//	BN_CTX* bn_ctx = BN_CTX_new();
-//	BIGNUM* dStrich = BN_CTX_get(bn_ctx);
-//	BIGNUM* sStrich = BN_CTX_get(bn_ctx);
-//	BIGNUM* tStrich = BN_CTX_get(bn_ctx);
-//	BIGNUM* amodb = BN_CTX_get(bn_ctx);
-//	BIGNUM* rem = BN_CTX_get(bn_ctx);
-//	BIGNUM* aDivB = BN_CTX_get(bn_ctx);
-//	BIGNUM * aDivBT = BN_CTX_get(bn_ctx);
-//	if (BN_is_zero(b)) {
-//		d = a;
-//		BN_one(s);
-//		BN_zero(t);
-//		return;
-//	}
-//	BN_mod(amodb, a, b, bn_ctx);
-//	printf("a: %s\tb: %s\n", BN_bn2dec(a), BN_bn2dec(b));
-//	BN_mod_inverse(d, e, )
-//	extended_euclid(b, amodb, dStrich, sStrich, tStrich);
-//	*d = *dStrich;
-//	*s = *tStrich;
-//	BN_div(aDivB, rem, a, b, bn_ctx);
-//	BN_mul(aDivBT, aDivB, t, bn_ctx);
-//	BN_sub(t, sStrich, aDivBT);
-//}
 
 
 void DieWithError(char* string) {
