@@ -62,24 +62,24 @@ void generate_keys(char* nickname) {
 	BIGNUM* N = BN_new();
 	BN_mul(N, p, q, bn_ctx);
 
-	BIGNUM* pMinusOne;
+	BIGNUM* pMinusOne = BN_CTX_get(bn_ctx);
 	BN_sub(pMinusOne, p, BN_value_one());
 
-	BIGNUM* qMinusOne;
+	BIGNUM* qMinusOne = BN_CTX_get(bn_ctx);
 	BN_sub(qMinusOne, q, BN_value_one());
 
-	BIGNUM* eulerN;
+	BIGNUM* eulerN = BN_CTX_get(bn_ctx);
 	BN_mul(eulerN, pMinusOne, qMinusOne, bn_ctx);
-	BIGNUM* e;
-	BIGNUM* gcd;
+	BIGNUM* e = BN_CTX_get(bn_ctx);
+	BIGNUM* gcd = BN_CTX_get(bn_ctx);
 	do {
 		BN_generate_prime(e, 512, 0, NULL, NULL, NULL, NULL);
 		BN_gcd(gcd, e, eulerN, bn_ctx);
 	} while (!BN_is_one(gcd));
 
-	BIGNUM* d;
-	BIGNUM* k;
-	BIGNUM* junk;
+	BIGNUM* d = BN_CTX_get(bn_ctx);
+	BIGNUM* k = BN_CTX_get(bn_ctx);
+	BIGNUM* junk = BN_CTX_get(bn_ctx);
 	extended_euclid(e, N, junk, d, k);
 	open_db(&db);
 	char* e_as_hex = BN_bn2hex(e);
@@ -205,13 +205,13 @@ void myChat(int sock_nr) {
 
 void extended_euclid(BIGNUM* a, BIGNUM* b, BIGNUM* d, BIGNUM* s, BIGNUM* t) {
 	BN_CTX* bn_ctx = BN_CTX_new();
-	BIGNUM* dStrich;
-	BIGNUM* sStrich;
-	BIGNUM* tStrich;
-	BIGNUM* amodb;
-	BIGNUM* rem;
-	BIGNUM* aDivB;
-	BIGNUM * aDivBT;
+	BIGNUM* dStrich = BN_CTX_get(bn_ctx);
+	BIGNUM* sStrich = BN_CTX_get(bn_ctx);
+	BIGNUM* tStrich = BN_CTX_get(bn_ctx);
+	BIGNUM* amodb = BN_CTX_get(bn_ctx);
+	BIGNUM* rem = BN_CTX_get(bn_ctx);
+	BIGNUM* aDivB = BN_CTX_get(bn_ctx);
+	BIGNUM * aDivBT = BN_CTX_get(bn_ctx);
 	if (BN_is_zero(b)) {
 		*d = *a;
 		BN_one(s);
