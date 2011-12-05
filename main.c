@@ -78,10 +78,11 @@ void generate_keys(char* nickname) {
 	} while (!BN_is_one(gcd));
 
 	BIGNUM* d = BN_CTX_get(bn_ctx);
-	BIGNUM* k = BN_CTX_get(bn_ctx);
-	BIGNUM* junk = BN_CTX_get(bn_ctx);
-	extended_euclid(e, N, junk, d, k);
+
+	BN_mod_inverse(d, e, eulerN, bn_ctx);
+
 	open_db(&db);
+	printf("d: %s",  BN_bn2dec(d));
 	char* e_as_hex = BN_bn2hex(e);
 	char* n_as_hex = BN_bn2hex(N);
 	char* d_as_hex = BN_bn2hex(d);
@@ -203,29 +204,32 @@ void myChat(int sock_nr) {
 // Starte Kommunikation
 }
 
-void extended_euclid(BIGNUM* a, BIGNUM* b, BIGNUM* d, BIGNUM* s, BIGNUM* t) {
-	BN_CTX* bn_ctx = BN_CTX_new();
-	BIGNUM* dStrich = BN_CTX_get(bn_ctx);
-	BIGNUM* sStrich = BN_CTX_get(bn_ctx);
-	BIGNUM* tStrich = BN_CTX_get(bn_ctx);
-	BIGNUM* amodb = BN_CTX_get(bn_ctx);
-	BIGNUM* rem = BN_CTX_get(bn_ctx);
-	BIGNUM* aDivB = BN_CTX_get(bn_ctx);
-	BIGNUM * aDivBT = BN_CTX_get(bn_ctx);
-	if (BN_is_zero(b)) {
-		*d = *a;
-		BN_one(s);
-		BN_zero(t);
-		return;
-	}
-	BN_mod(amodb, a, b, bn_ctx);
-	extended_euclid(b, amodb, dStrich, sStrich, tStrich);
-	*d = *dStrich;
-	*s = *tStrich;
-	BN_div(aDivB, rem, a, b, bn_ctx);
-	BN_mul(aDivBT, aDivB, t, bn_ctx);
-	BN_sub(t, sStrich, aDivBT);
-}
+//void extended_euclid(BIGNUM* a, BIGNUM* b, BIGNUM* d, BIGNUM* s, BIGNUM* t) {
+//	BN_CTX* bn_ctx = BN_CTX_new();
+//	BIGNUM* dStrich = BN_CTX_get(bn_ctx);
+//	BIGNUM* sStrich = BN_CTX_get(bn_ctx);
+//	BIGNUM* tStrich = BN_CTX_get(bn_ctx);
+//	BIGNUM* amodb = BN_CTX_get(bn_ctx);
+//	BIGNUM* rem = BN_CTX_get(bn_ctx);
+//	BIGNUM* aDivB = BN_CTX_get(bn_ctx);
+//	BIGNUM * aDivBT = BN_CTX_get(bn_ctx);
+//	if (BN_is_zero(b)) {
+//		d = a;
+//		BN_one(s);
+//		BN_zero(t);
+//		return;
+//	}
+//	BN_mod(amodb, a, b, bn_ctx);
+//	printf("a: %s\tb: %s\n", BN_bn2dec(a), BN_bn2dec(b));
+//	BN_mod_inverse(d, e, )
+//	extended_euclid(b, amodb, dStrich, sStrich, tStrich);
+//	*d = *dStrich;
+//	*s = *tStrich;
+//	BN_div(aDivB, rem, a, b, bn_ctx);
+//	BN_mul(aDivBT, aDivB, t, bn_ctx);
+//	BN_sub(t, sStrich, aDivBT);
+//}
+
 
 void DieWithError(char* string) {
 	printf("%s", string);
