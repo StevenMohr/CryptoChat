@@ -28,7 +28,7 @@ all: CryptoChat
 CryptoChat: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MacOS X C Linker'
-	gcc -L"/Users/steven/Documents/workspace2/CryptoChat" -L/usr/lib -L/usr/local/lib -o "CryptoChat" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/Users/stevenmohr/git/CryptoChat" -L/usr/lib -L/usr/local/lib -o "CryptoChat" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

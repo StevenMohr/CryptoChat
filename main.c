@@ -31,12 +31,18 @@ int main(int argc, char *argv[]) {
 				return 0;
 			} else {
 				if (argc == 3 && strcmp(argv[1], "-l") == 0) {
-					myListen(argv[2]);
+					int socket = myListen(argv[2]);
+					myChat(socket);
 					return 0;
 				} else {
 					if (argc == 4 && strcmp(argv[1], "-c") == 0) {
-						myConnect(argv[2], argv[3]);
+						int socket = myConnect(argv[2], argv[3]);
+						myChat(socket);
 						return 0;
+					} else {
+						if(argc == 2 && strcmp(argv[1], "-a")) {
+							/* Implement print all clients*/
+						}
 					}
 				}
 
@@ -107,6 +113,7 @@ int myListen(char* port_as_char) {
 	int sock; /* socket to create */
 	struct sockaddr_in echoServAddr; /* Local address */
 	int port;
+	struct sockaddr_storage their_addr;
 
 	sscanf(port_as_char, "%i", &port);
 
@@ -128,7 +135,9 @@ int myListen(char* port_as_char) {
 	/* Mark the socket so it will listen for incoming connections */
 	if (listen(sock, 1) < 0)
 		DieWithError("listen() failed");
-	return sock;
+	unsigned int addr_size = sizeof their_addr;
+	int new_sock = accept(sock, (struct sockaddr *)&their_addr, &addr_size);
+	return new_sock;
 
 }
 int myConnect(char* host, char* port_as_char) {
