@@ -164,7 +164,7 @@ int myConnect(char* host, char* port_as_char) {
 	/* copies the internet address to server address */
 	bcopy(hp->h_addr, &server.sin_addr, hp->h_length);
 	/* set port */
-	server.sin_port = port;
+	server.sin_port = htons(port);
 	if (connect(sock, &server, sizeof(struct sockaddr_in)) < 0) {
 		exit(1);
 	}
@@ -199,6 +199,7 @@ void myChat(int sock_nr) {
 	open_db(&db);
 	get_own_data(&db, &nickName, keyE, keyN, keyD);
 
+	//TODO: Byte order convertieren!
 	send(sock_nr, &sizeKeyE, sizeof(sizeKeyE), 0);
 	send(sock_nr, keyE, sizeof(keyE), 0);
 	send(sock_nr, &sizeKeyN, sizeof(sizeKeyN), 0);
@@ -229,6 +230,7 @@ void myChat(int sock_nr) {
 
 	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
 	while (end == 0) {
+		int lenght_msg = 0;
 		FD_ZERO(&readfds);
 		FD_SET(sock_nr, &readfds);
 		FD_SET(0, &readfds);
@@ -241,8 +243,14 @@ void myChat(int sock_nr) {
 				//printf("client - read\n");
 
 				//read data from open socket
+				char* buffer;
 
-				//TODO: Read message and decrypt it.
+				recv(sock_nr, &lenght_msg, 4, 0);
+				lenght_msg = ntohl(lenght_msg);
+				buffer = malloc(lenght_msg);
+				recv(sock_nr, buffer, lenght_msg, 0);
+				char* plain_text = decrypt_msg(buffer, remoteKeyE, remoteKeyN);
+				printf("%s", plain_text);
 			}
 
 			else if (fd == 0) {
@@ -251,7 +259,12 @@ void myChat(int sock_nr) {
 				// printf("client - send\n");
 				fgets(kb_msg, MSG_SIZE + 1, STDIN_FILENO);
 
-				//printf("%s\n",kb_msg);
+				encrypt_msg(kb_msg, keyN, keyD);
+				send(sock_nr, htonl(sizeof kb_msg), 4, 0);
+				//TODO: htonl
+				send(sock_nr, kb_msg, sizeof kb_msg, 0);
+
+				printf("%s %s\n", nickName, kb_msg);
 
 				if (strcmp(kb_msg, "quit\n") == 0) {
 
@@ -284,6 +297,14 @@ void myChat(int sock_nr) {
 		}
 
 	}
+}
+
+void encrypt_msg(char* message, BIGNUM* n, BIGNUM* d) {
+
+}
+
+char* decrypt_msg(char* cipher, BIGNUM* e, BIGNUM* n) {
+	return NULL;
 }
 
 void DieWithError(char* string) {

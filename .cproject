@@ -29,6 +29,7 @@
 								</option>
 								<option id="macosx.c.link.option.libs.1685854196" name="Libraries (-l)" superClass="macosx.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="crypto"/>
+									<listOptionValue builtIn="false" value="sqlite3"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.macosx.c.linker.input.1348275364" superClass="cdt.managedbuild.tool.macosx.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -78,4 +79,5 @@
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>
