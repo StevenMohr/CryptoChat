@@ -12,6 +12,9 @@
 #include <sqlite3.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "main.h"
 #include "sqilte.h"
@@ -40,7 +43,7 @@ int main(int argc, char *argv[]) {
 						myChat(socket);
 						return 0;
 					} else {
-						if(argc == 2 && strcmp(argv[1], "-a")) {
+						if (argc == 2 && strcmp(argv[1], "-a")) {
 							/* Implement print all clients*/
 						}
 					}
@@ -55,13 +58,14 @@ int main(int argc, char *argv[]) {
 }
 
 void print_help() {
-	printf("%s",
-				"Help:\n"
-				"-l <port>\t\t Port to listen on for incoming connections.\n"
-			    "-c <hostname> <port>\t Connect to remote side using hostname and port.\n"
-			    "-i <nickname>\t\t Create keys for local user and use nickname\n"
-			    "-r <nickname>\t\t Change nickname of local user to <nickname>\n"
-			    "-a \t\t\t Show all known clients with their responding public-key");
+	printf(
+			"%s",
+			"Help:\n"
+					"-l <port>\t\t Port to listen on for incoming connections.\n"
+					"-c <hostname> <port>\t Connect to remote side using hostname and port.\n"
+					"-i <nickname>\t\t Create keys for local user and use nickname\n"
+					"-r <nickname>\t\t Change nickname of local user to <nickname>\n"
+					"-a \t\t\t Show all known clients with their responding public-key");
 }
 
 void generate_keys(char* nickname) {
@@ -93,7 +97,7 @@ void generate_keys(char* nickname) {
 	BN_mod_inverse(d, e, eulerN, bn_ctx);
 
 	open_db(&db);
-	printf("d: %s",  BN_bn2dec(d));
+	printf("d: %s", BN_bn2dec(d));
 	char* e_as_hex = BN_bn2hex(e);
 	char* n_as_hex = BN_bn2hex(N);
 	char* d_as_hex = BN_bn2hex(d);
@@ -136,7 +140,7 @@ int myListen(char* port_as_char) {
 	if (listen(sock, 1) < 0)
 		DieWithError("listen() failed");
 	unsigned int addr_size = sizeof their_addr;
-	int new_sock = accept(sock, (struct sockaddr *)&their_addr, &addr_size);
+	int new_sock = accept(sock, (struct sockaddr *) &their_addr, &addr_size);
 	return new_sock;
 
 }
@@ -169,6 +173,7 @@ int myConnect(char* host, char* port_as_char) {
 
 void myChat(int sock_nr) {
 	int result;
+	int end = 0;
 
 	//Sende Key
 	int sizeKeyE;
@@ -177,6 +182,7 @@ void myChat(int sock_nr) {
 	BIGNUM* keyN;
 	int sizeNick;
 	char* nickName;
+	BIGNUM* keyD;
 
 	int remoteSizeKeyE;
 	BIGNUM* remoteKeyE;
@@ -185,7 +191,13 @@ void myChat(int sock_nr) {
 	int remoteSizeNick;
 	char* remoteNickName;
 
+	fd_set readfds;
+	int fd;
+	char* kb_msg, msg = NULL;
+
 	sqlite3* db;
+	open_db(&db);
+	get_own_data(&db, &nickName, keyE, keyN, keyD);
 
 	send(sock_nr, &sizeKeyE, sizeof(sizeKeyE), 0);
 	send(sock_nr, keyE, sizeof(keyE), 0);
@@ -201,7 +213,6 @@ void myChat(int sock_nr) {
 	recv(sock_nr, &remoteSizeNick, 4, 0);
 	recv(sock_nr, remoteNickName, remoteSizeNick, 0);
 
-	open_db(&db);
 	result = verify_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
 			BN_bn2hex(remoteKeyN));
 	switch (result) {
@@ -212,12 +223,68 @@ void myChat(int sock_nr) {
 		break;
 	case NOT_VERIFIED:
 		printf("Public key doesn't match stored public key");
+		exit(0);
 		break;
 	};
 
-// Starte Kommunikation
-}
+	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
+	while (end == 0) {
+		FD_ZERO(&readfds);
+		FD_SET(sock_nr, &readfds);
+		FD_SET(0, &readfds);
+		/* Add keyboard to file descriptor set */
 
+		if (FD_ISSET(fd,&readfds)) {
+
+			if (fd == sock_nr) { /*Accept data from open socket */
+
+				//printf("client - read\n");
+
+				//read data from open socket
+
+				//TODO: Read message and decrypt it.
+			}
+
+			else if (fd == 0) {
+				/*process keyboard activiy*/
+
+				// printf("client - send\n");
+				fgets(kb_msg, MSG_SIZE + 1, STDIN_FILENO);
+
+				//printf("%s\n",kb_msg);
+
+				if (strcmp(kb_msg, "quit\n") == 0) {
+
+					sprintf(msg, "XClient is shutting down.\n");
+
+					write(sock_nr, msg, strlen(msg));
+
+					close(sock_nr); //close the current client
+
+					exit(0); //end program
+
+				}
+
+				else {
+
+					/* sprintf(kb_msg,"%s",alias);
+
+					 msg[result]='\0';
+
+					 strcat(kb_msg,msg+1);*/
+
+					sprintf(msg, "M%s", kb_msg);
+
+					write(sock_nr, msg, strlen(msg));
+
+				}
+
+			}
+
+		}
+
+	}
+}
 
 void DieWithError(char* string) {
 	printf("%s", string);

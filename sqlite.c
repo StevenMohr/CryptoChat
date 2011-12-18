@@ -24,7 +24,7 @@ void update_own_nickname(char* new_nick, sqlite3* db) {
 }
 
 void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d) {
-	int retval ;
+	int retval;
 	sqlite3_stmt *stmt;
 	char statement[10000];
 	char* query = "SELECT * from keys where id=0";
@@ -34,14 +34,14 @@ void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d) {
 	int cols = sqlite3_column_count(stmt);
 	if (cols > 1) {
 
-		sprintf(statement,
-				"UPDATE keys SET nick='%s', e='%s', n='%s', d='%s' where id=0",
-				nickname, e, n, d);
+		sprintf(
+				statement,
+				"UPDATE keys SET nick='%s', e='%s', n='%s', d='%s' where id=0", nickname, e, n, d);
 		sqlite3_exec(db, statement, 0, 0, 0);
 	} else {
-		sprintf(statement,
-				"INSERT INTO keys VALUES (0, '%s', '%s', '%s', '%s')", nickname,
-				e, n, d);
+		sprintf(
+				statement,
+				"INSERT INTO keys VALUES (0, '%s', '%s', '%s', '%s')", nickname, e, n, d);
 		sqlite3_exec(db, statement, 0, 0, 0);
 	}
 }
@@ -50,8 +50,8 @@ void insert_new_contact(sqlite3* db, char* nickname, char* e, char* n) {
 	int retval;
 	sqlite3_stmt *stmt;
 	char* statement;
-	sprintf(statement, "INSERT INTO keys VALUES (0, '%s', '%s', '%s')",
-			nickname, e, n);
+	sprintf(statement,
+			"INSERT INTO keys VALUES (0, '%s', '%s', '%s')", nickname, e, n);
 	retval = sqlite3_exec(db, statement, 0, 0, 0);
 }
 
@@ -65,9 +65,9 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 	if (cols < 2) {
 		return NEW_CONTACT;
 	} else {
-		sprintf(statement,
-				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'",
-				nickname, e, n);
+		sprintf(
+				statement,
+				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
 		retval = sqlite3_exec(db, statement, 0, 0, 0);
 		int cols = sqlite3_column_count(stmt);
 		if (cols < 2) {
@@ -76,4 +76,21 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 			return 0;
 		}
 	}
+}
+
+void get_own_data(sqlite3* db, char* nickname, BIGNUM* e, BIGNUM* n, BIGNUM* d) {
+	int retval, cols;
+	sqlite3_stmt *stmt;
+	char* statement = "SELECT * FROM keys WHERE id = 1";
+	retval = sqlite3_exec(db, statement, 0, 0, 0);
+	nickname = sqlite3_column_text(stmt, 1);
+	BN_hex2bn(&e, sqlite3_column_text(stmt, 2));
+	BN_hex2bn(&n, sqlite3_column_text(stmt, 3));
+	BN_hex2bn(&d, sqlite3_column_text(stmt, 4));
+
+	sprintf(
+			statement,
+			"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
+	retval = sqlite3_exec(db, statement, 0, 0, 0);
+	cols = sqlite3_column_count(stmt);
 }
