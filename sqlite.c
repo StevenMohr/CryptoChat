@@ -86,5 +86,5 @@ void get_own_data(sqlite3* db, char** nickname, BIGNUM* e, BIGNUM* n, BIGNUM* d)
 	*nickname = sqlite3_column_text(stmt, 1);
 	BN_hex2bn(&e, (const char*) sqlite3_column_text(stmt, 2));
 	BN_hex2bn(&n, (const char*) sqlite3_column_text(stmt, 3));
-	//BN_hex2bn(&d, (const char*) sqlite3_column_text(stmt, 4));
+	BN_hex2bn(&d, (const char*) sqlite3_column_text(stmt, 4));
 }

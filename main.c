@@ -178,7 +178,7 @@ void myChat(int sock_nr) {
 	char* nickName = NULL;
 	//int sizeNick = strlen(nickName);
 
-	BIGNUM* keyD = BN_value_one();
+	BIGNUM* keyD = BN_CTX_get(bn_ctx);
 
 	int remoteSizeKeyE = 0;
 	BIGNUM* remoteKeyE = NULL;
