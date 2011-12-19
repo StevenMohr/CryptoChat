@@ -197,7 +197,7 @@ void myChat(int sock_nr) {
 
 	sqlite3* db;
 	open_db(&db);
-	get_own_data(&db, &nickName, keyE, keyN, keyD);
+	get_own_data(&db, &nickName, &keyE, &keyN, &keyD);
 
 	//TODO: Byte order convertieren!
 	send(sock_nr, &sizeKeyE, sizeof(sizeKeyE), 0);

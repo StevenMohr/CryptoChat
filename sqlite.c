@@ -68,7 +68,7 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 		sprintf(
 				statement,
 				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
-		retval = sqlite3_exec(db, statement, 0, 0, 0);
+		retval = sqlite3_prepare_v2(db, statement,  -1, stmt, statement);
 		int cols = sqlite3_column_count(stmt);
 		if (cols < 2) {
 			return NOT_VERIFIED;
@@ -81,16 +81,10 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 void get_own_data(sqlite3* db, char* nickname, BIGNUM* e, BIGNUM* n, BIGNUM* d) {
 	int retval, cols;
 	sqlite3_stmt *stmt;
-	char* statement = "SELECT * FROM keys WHERE id = 1";
-	retval = sqlite3_exec(db, statement, 0, 0, 0);
+	const char* statement = "SELECT * FROM keys WHERE id = 1";
+	sqlite3_prepare_v2(&db, statement, -1, &stmt,0);
 	nickname = sqlite3_column_text(stmt, 1);
 	BN_hex2bn(&e, sqlite3_column_text(stmt, 2));
 	BN_hex2bn(&n, sqlite3_column_text(stmt, 3));
 	BN_hex2bn(&d, sqlite3_column_text(stmt, 4));
-
-	sprintf(
-			statement,
-			"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
-	retval = sqlite3_exec(db, statement, 0, 0, 0);
-	cols = sqlite3_column_count(stmt);
 }
