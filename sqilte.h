@@ -18,5 +18,5 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n);
 void insert_new_contact(sqlite3* db, char* nickname, char* e, char* n);
 void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d);
 void update_own_nickname(char* new_nick, sqlite3* db);
-void get_own_data(sqlite3* db, char* nick_name, BIGNUM* e, BIGNUM* n, BIGNUM* d);
+void get_own_data(sqlite3* db, char** nick_name, BIGNUM* e, BIGNUM* n, BIGNUM* d);
 #endif /* SQILTE_H_ */

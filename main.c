@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 					return 0;
 				} else {
 					if (argc == 4 && strcmp(argv[1], "-c") == 0) {
-						int socket = myConnect(argv[2], argv[3]);
+						//int socket = myConnect(argv[2], argv[3]);
 						myChat(socket);
 						return 0;
 					} else {
@@ -97,7 +97,6 @@ void generate_keys(char* nickname) {
 	BN_mod_inverse(d, e, eulerN, bn_ctx);
 
 	open_db(&db);
-	printf("d: %s", BN_bn2dec(d));
 	char* e_as_hex = BN_bn2hex(e);
 	char* n_as_hex = BN_bn2hex(N);
 	char* d_as_hex = BN_bn2hex(d);
@@ -166,16 +165,18 @@ int myConnect(char* host, char* port_as_char) {
 }
 
 void myChat(int sock_nr) {
+	BN_CTX* bn_ctx = BN_CTX_new();
+		BN_CTX_init(bn_ctx);
 	int result = 0;
 	int end = 0;
 
 	//Sende Key
-	int sizeKeyE = 4;
-	BIGNUM* keyE = BN_value_one();
-	int sizeKeyN = 4;
-	BIGNUM* keyN = BN_value_one();
-	char* nickName = "king_otto\0";
-	int sizeNick = strlen(nickName);
+	BIGNUM* keyE = BN_CTX_get(bn_ctx);
+	int sizeKeyE = 0;
+	int sizeKeyN = 0;
+	BIGNUM* keyN = BN_CTX_get(bn_ctx);
+	char* nickName = NULL;
+	//int sizeNick = strlen(nickName);
 
 	BIGNUM* keyD = BN_value_one();
 
@@ -191,7 +192,8 @@ void myChat(int sock_nr) {
 
 	sqlite3* db;
 	open_db(&db);
-//	get_own_data(&db, &nickName, &keyE, &keyN, &keyD);
+	get_own_data(db, &nickName, keyE, keyN, keyD);
+	printf("%s\n", nickName);
 
 //TODO: Byte order convertieren!
 //	send(sock_nr, &sizeKeyE, sizeof(sizeKeyE), 0);
@@ -222,59 +224,58 @@ void myChat(int sock_nr) {
 //		break;
 //	};
 
-	fd_set testfds, clientfds;
-	char msg[MSG_SIZE + 1];
-	char kb_msg[MSG_SIZE + 10];
-
-	/*Client variables=======================*/
-	int sockfd = sock_nr;
-
-	FD_ZERO(&clientfds);
-	FD_SET(sockfd, &clientfds);
-	FD_SET(0, &clientfds);
-	//stdin
-	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
-	while (end == 0) {
-		testfds = clientfds;
-		select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
-
-		for (fd = 0; fd < FD_SETSIZE; fd++) {
-			if (FD_ISSET(fd,&testfds)) {
-				if (fd == sockfd) { /*Accept data from open socket */
-					printf("client - read\n");
-
-					//read data from open socket
-					result = read(sockfd, msg, MSG_SIZE);
-					msg[result] = '\0'; /* Terminate string with null */
-					printf("%s", msg + 1);
-
-					if (msg[0] == 'X') {
-						close(sockfd);
-						exit(0);
-					}
-				} else if (fd == 0) { /*process keyboard activiy*/
-					printf("client - send\n");
-
-					fgets(kb_msg, MSG_SIZE + 1, stdin);
-					//printf("%s\n",kb_msg);
-					if (strcmp(kb_msg, "quit\n") == 0) {
-						sprintf(msg, "XClient is shutting down.\n");
-						write(sockfd, msg, strlen(msg));
-						close(sockfd); //close the current client
-						exit(0); //end program
-					} else {
-						/* sprintf(kb_msg,"%s",alias);
-						 msg[result]='\0';
-						 strcat(kb_msg,msg+1);*/
-
-						sprintf(msg, "M%s", kb_msg);
-						write(sockfd, msg, strlen(msg));
-					}
-				}
-			}
-
-		}
-	}
+//	fd_set testfds, clientfds;
+//	char msg[MSG_SIZE + 1];
+//	char kb_msg[MSG_SIZE + 10];
+//
+//	/*Client variables=======================*/
+//	int sockfd = sock_nr;
+//
+//	FD_ZERO(&clientfds);
+//	FD_SET(sockfd, &clientfds);
+//	FD_SET(0, &clientfds);
+//	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
+//	while (end == 0) {
+//		testfds = clientfds;
+//		select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
+//
+//		for (fd = 0; fd < FD_SETSIZE; fd++) {
+//			if (FD_ISSET(fd,&testfds)) {
+//				if (fd == sockfd) { /*Accept data from open socket */
+//					printf("client - read\n");
+//
+//					//read data from open socket
+//					result = read(sockfd, msg, MSG_SIZE);
+//					msg[result] = '\0'; /* Terminate string with null */
+//					printf("%s", msg + 1);
+//
+//					if (msg[0] == 'X') {
+//						close(sockfd);
+//						exit(0);
+//					}
+//				} else if (fd == 0) { /*process keyboard activiy*/
+//					printf("client - send\n");
+//
+//					fgets(kb_msg, MSG_SIZE + 1, stdin);
+//					//printf("%s\n",kb_msg);
+//					if (strcmp(kb_msg, "quit\n") == 0) {
+//						sprintf(msg, "XClient is shutting down.\n");
+//						write(sockfd, msg, strlen(msg));
+//						close(sockfd); //close the current client
+//						exit(0); //end program
+//					} else {
+//						/* sprintf(kb_msg,"%s",alias);
+//						 msg[result]='\0';
+//						 strcat(kb_msg,msg+1);*/
+//
+//						sprintf(msg, "M%s", kb_msg);
+//						write(sockfd, msg, strlen(msg));
+//					}
+//				}
+//			}
+//
+//		}
+//	}
 }
 
 void encrypt_msg(char* message, BIGNUM* n, BIGNUM* d) {
