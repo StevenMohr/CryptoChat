@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 					return 0;
 				} else {
 					if (argc == 4 && strcmp(argv[1], "-c") == 0) {
-						//int socket = myConnect(argv[2], argv[3]);
+						int socket = myConnect(argv[2], argv[3]);
 						myChat(socket);
 						return 0;
 					} else {
@@ -166,7 +166,7 @@ int myConnect(char* host, char* port_as_char) {
 
 void myChat(int sock_nr) {
 	BN_CTX* bn_ctx = BN_CTX_new();
-		BN_CTX_init(bn_ctx);
+	BN_CTX_init(bn_ctx);
 	int result = 0;
 	int end = 0;
 
@@ -176,106 +176,146 @@ void myChat(int sock_nr) {
 	int sizeKeyN = 0;
 	BIGNUM* keyN = BN_CTX_get(bn_ctx);
 	char* nickName = NULL;
-	//int sizeNick = strlen(nickName);
 
 	BIGNUM* keyD = BN_CTX_get(bn_ctx);
-
-	int remoteSizeKeyE = 0;
-	BIGNUM* remoteKeyE = NULL;
-	int remoteSizeKeyN = 0;
-	BIGNUM* remoteKeyN = NULL;
-	int remoteSizeNick = 0;
-	char* remoteNickName;
 
 	fd_set readfds;
 	int fd;
 
+	//Retrieving own nickname, e and n from database.
 	sqlite3* db;
 	open_db(&db);
 	get_own_data(db, &nickName, keyE, keyN, keyD);
-	printf("%s\n", nickName);
+	int sizeNick = strlen(nickName);
 
-//TODO: Byte order convertieren!
-//	send(sock_nr, &sizeKeyE, sizeof(sizeKeyE), 0);
-//	send(sock_nr, keyE, sizeof(keyE), 0);
-//	send(sock_nr, &sizeKeyN, sizeof(sizeKeyN), 0);
-//	send(sock_nr, keyN, sizeof(keyN), 0);
-//	send(sock_nr, &sizeNick, sizeof(sizeNick), 0);
-//	send(sock_nr, nickName, strlen(nickName), 0);
-//
-//	recv(sock_nr, &remoteSizeKeyE, 4, 0);
-//	recv(sock_nr, &remoteKeyE, remoteSizeKeyE, 0);
-//	recv(sock_nr, &remoteSizeKeyN, 4, 0);
-//	recv(sock_nr, &remoteKeyN, remoteSizeKeyN, 0);
-//	recv(sock_nr, &remoteSizeNick, 4, 0);
-//	recv(sock_nr, &remoteNickName, remoteSizeNick, 0);
+	//Converting e und n to big-endian binary form for network transmission
+	sizeKeyE = BN_num_bytes(keyE);
+	unsigned char* binaryKeyE = malloc(sizeKeyE);
+	BN_bn2bin(keyE, binaryKeyE);
 
-//	result = verify_contact(db, remoteNickName, BN_bn2hex(&remoteKeyE),
-//			BN_bn2hex(&remoteKeyN));
-//	switch (result) {
-//	case NEW_CONTACT:
-//		printf("New contact: %s\n", remoteNickName);
-//		insert_new_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
-//				BN_bn2hex(remoteKeyN));
-//		break;
-//	case NOT_VERIFIED:
-//		printf("Public key doesn't match stored public key");
-//		exit(0);
-//		break;
-//	};
+	sizeKeyN = BN_num_bytes(keyN);
+	unsigned char* binaryKeyN = malloc(sizeKeyN);
+	BN_bn2bin(keyN, binaryKeyN);
+	int nl_sizeKeyE = htonl(sizeKeyE);
+	int nl_sizeKeyN = htonl(sizeKeyN);
+	int nl_sizeNick = htonl(sizeNick);
+	printf("E: keysize: %d keyhtonl: %d local Key: %s\n\n", sizeKeyE, nl_sizeKeyE, BN_bn2hex(keyE));
+	printf("N: keysize: %d keyhtonl: %d local Key: %s\n\n", sizeKeyN, nl_sizeKeyN, BN_bn2hex(keyN));
 
-//	fd_set testfds, clientfds;
-//	char msg[MSG_SIZE + 1];
-//	char kb_msg[MSG_SIZE + 10];
-//
-//	/*Client variables=======================*/
-//	int sockfd = sock_nr;
-//
-//	FD_ZERO(&clientfds);
-//	FD_SET(sockfd, &clientfds);
-//	FD_SET(0, &clientfds);
-//	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
-//	while (end == 0) {
-//		testfds = clientfds;
-//		select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
-//
-//		for (fd = 0; fd < FD_SETSIZE; fd++) {
-//			if (FD_ISSET(fd,&testfds)) {
-//				if (fd == sockfd) { /*Accept data from open socket */
-//					printf("client - read\n");
-//
-//					//read data from open socket
-//					result = read(sockfd, msg, MSG_SIZE);
-//					msg[result] = '\0'; /* Terminate string with null */
-//					printf("%s", msg + 1);
-//
-//					if (msg[0] == 'X') {
-//						close(sockfd);
-//						exit(0);
-//					}
-//				} else if (fd == 0) { /*process keyboard activiy*/
-//					printf("client - send\n");
-//
-//					fgets(kb_msg, MSG_SIZE + 1, stdin);
-//					//printf("%s\n",kb_msg);
-//					if (strcmp(kb_msg, "quit\n") == 0) {
-//						sprintf(msg, "XClient is shutting down.\n");
-//						write(sockfd, msg, strlen(msg));
-//						close(sockfd); //close the current client
-//						exit(0); //end program
-//					} else {
-//						/* sprintf(kb_msg,"%s",alias);
-//						 msg[result]='\0';
-//						 strcat(kb_msg,msg+1);*/
-//
-//						sprintf(msg, "M%s", kb_msg);
-//						write(sockfd, msg, strlen(msg));
-//					}
-//				}
-//			}
-//
-//		}
-//	}
+
+	send(sock_nr, &nl_sizeKeyE, sizeof(nl_sizeKeyE), 0);
+	send(sock_nr, &binaryKeyE, sizeKeyE, 0);
+	send(sock_nr, &nl_sizeKeyN, sizeof(nl_sizeKeyN), 0);
+	send(sock_nr, &binaryKeyN, sizeKeyN, 0);
+	send(sock_nr, &nl_sizeNick, sizeof(sizeNick), 0);
+	send(sock_nr, &nickName, sizeNick, 0);
+
+	int remoteSizeKeyE = 0;
+	BIGNUM* remoteKeyE = BN_CTX_get(bn_ctx);
+	int remoteSizeKeyN = 0;
+	BIGNUM* remoteKeyN = BN_CTX_get(bn_ctx);
+	int remoteSizeNick = 0;
+	char* remoteNickName;
+	unsigned char* binaryRemoteE;
+	unsigned char* binaryRemoteN;
+
+	sleep(4);
+	recv(sock_nr, &remoteSizeKeyE, sizeof remoteSizeKeyE, 0);
+	remoteSizeKeyE = ntohl(remoteSizeKeyE);
+	binaryRemoteE = malloc(remoteSizeKeyE);
+	recv(sock_nr, &binaryRemoteE, remoteSizeKeyE, 0);
+	BN_bin2bn(binaryKeyE, remoteSizeKeyE, remoteKeyE);
+	printf("E: key size: %d remote Key: %s", remoteSizeKeyE,
+			BN_bn2hex(remoteKeyE));
+
+	fflush(stdout);
+	recv(sock_nr, &remoteSizeKeyN, sizeof remoteSizeKeyN, 0);
+	remoteSizeKeyN = ntohl(remoteSizeKeyN);
+	binaryRemoteN = malloc(remoteSizeKeyN);
+	recv(sock_nr, &binaryRemoteN, remoteSizeKeyN, 0);
+	BN_bin2bn(binaryKeyN, remoteSizeKeyN, remoteKeyN);
+	printf("\nN:key size: %d remote Key: %s", remoteSizeKeyN,
+				BN_bn2hex(remoteKeyN));
+
+	recv(sock_nr, &remoteSizeNick, sizeof remoteSizeNick, 0);
+	remoteSizeNick = ntohl(remoteSizeNick);
+	remoteNickName = malloc(remoteSizeNick);
+	recv(sock_nr, &remoteNickName, remoteSizeNick, 0);
+	fflush(stdout);
+
+
+
+//	free(binaryKeyE);
+//	free(binaryKeyN);
+//	free(binaryRemoteE);
+//	free(binaryRemoteN);
+
+	result = verify_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
+			BN_bn2hex(remoteKeyN));
+	switch (result) {
+	case NEW_CONTACT:
+		printf("New contact: %s\n", remoteNickName);
+		insert_new_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
+				BN_bn2hex(remoteKeyN));
+		break;
+	case NOT_VERIFIED:
+		printf("Public key doesn't match stored public key");
+		exit(0);
+		break;
+	};
+
+	fd_set testfds, clientfds;
+	char msg[MSG_SIZE + 1];
+	char kb_msg[MSG_SIZE + 10];
+
+	/*Client variables=======================*/
+	int sockfd = sock_nr;
+
+	FD_ZERO(&clientfds);
+	FD_SET(sockfd, &clientfds);
+	FD_SET(0, &clientfds);
+	/*Event loop roughly taken from http://dejant.blogspot.com/2007/08/chat-program-in-c.html*/
+	while (end == 0) {
+		testfds = clientfds;
+		select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
+
+		for (fd = 0; fd < FD_SETSIZE; fd++) {
+			if (FD_ISSET(fd,&testfds)) {
+				if (fd == sockfd) { /*Accept data from open socket */
+					printf("client - read\n");
+
+					//read data from open socket
+					result = read(sockfd, msg, MSG_SIZE);
+					msg[result] = '\0'; /* Terminate string with null */
+					printf("%s", msg + 1);
+
+					if (msg[0] == 'X') {
+						close(sockfd);
+						exit(0);
+					}
+				} else if (fd == 0) { /*process keyboard activiy*/
+					printf("client - send\n");
+
+					fgets(kb_msg, MSG_SIZE + 1, stdin);
+					//printf("%s\n",kb_msg);
+					if (strcmp(kb_msg, "quit\n") == 0) {
+						sprintf(msg, "XClient is shutting down.\n");
+						write(sockfd, msg, strlen(msg));
+						close(sockfd); //close the current client
+						exit(0); //end program
+					} else {
+						/* sprintf(kb_msg,"%s",alias);
+						 msg[result]='\0';
+						 strcat(kb_msg,msg+1);*/
+
+						sprintf(msg, "M%s", kb_msg);
+						write(sockfd, msg, strlen(msg));
+					}
+				}
+			}
+
+		}
+	}
 }
 
 void encrypt_msg(char* message, BIGNUM* n, BIGNUM* d) {
