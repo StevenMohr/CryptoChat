@@ -205,9 +205,9 @@ void myChat(int sock_nr) {
 			nl_sizeKeyN, BN_bn2hex(keyN));
 
 	send(sock_nr, &nl_sizeKeyE, sizeof(nl_sizeKeyE), 0);
-	send(sock_nr, &binaryKeyE, sizeKeyE, 0);
+	send(sock_nr, binaryKeyE, sizeKeyE, 0);
 	send(sock_nr, &nl_sizeKeyN, sizeof(nl_sizeKeyN), 0);
-	send(sock_nr, &binaryKeyN, sizeKeyN, 0);
+	send(sock_nr, binaryKeyN, sizeKeyN, 0);
 	send(sock_nr, &nl_sizeNick, sizeof(sizeNick), 0);
 	send(sock_nr, &nickName, sizeNick, 0);
 
@@ -230,25 +230,30 @@ void myChat(int sock_nr) {
 	remoteSizeKeyE = ntohl(remoteSizeKeyE);
 
 	//Reading remote key e
+
 	binaryRemoteE = malloc(remoteSizeKeyE);
+	memset(binaryRemoteE, 0, remoteSizeKeyE);
 	bytesToRead = remoteSizeKeyE;
 //	while (bytesToRead > 0) {
 //		int offset = (remoteSizeKeyE - bytesToRead);
 //		bytesToRead -= recv(sock_nr, (&binaryRemoteE) + offset,
 //				bytesToRead, 0);
 //	}
-	recv(sock_nr, binaryRemoteE , bytesToRead, 0);
+	recv(sock_nr, binaryRemoteE , remoteSizeKeyE, 0);
 	remoteKeyE = BN_bin2bn(binaryRemoteE, remoteSizeKeyE, NULL);
 
 	fflush(stdout);
 	recv(sock_nr, &remoteSizeKeyN, sizeof remoteSizeKeyN, 0);
 	remoteSizeKeyN = ntohl(remoteSizeKeyN);
 	binaryRemoteN = malloc(remoteSizeKeyN);
-	recv(sock_nr, &binaryRemoteN, remoteSizeKeyN, 0);
-	BN_bin2bn(binaryKeyN, remoteSizeKeyN, remoteKeyN);
+	recv(sock_nr, binaryRemoteN, remoteSizeKeyN, 0);
+
+	remoteKeyN = BN_bin2bn(binaryRemoteN, remoteSizeKeyN, NULL);
+	printf("\nE:key size: %d remote Key: %s", remoteSizeKeyE,
+				BN_bn2hex(remoteKeyE));
 	printf("\nN:key size: %d remote Key: %s", remoteSizeKeyN,
 			BN_bn2hex(remoteKeyN));
-
+	fflush(stdout);
 	recv(sock_nr, &remoteSizeNick, sizeof remoteSizeNick, 0);
 	remoteSizeNick = ntohl(remoteSizeNick);
 	remoteNickName = malloc(remoteSizeNick);
