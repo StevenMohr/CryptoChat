@@ -58,17 +58,17 @@ void insert_new_contact(sqlite3* db, char* nickname, char* e, char* n) {
 int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 	int retval, cols;
 	sqlite3_stmt *stmt;
-	char* statement;
-	sprintf(statement, "SELECT * FROM keys WHERE nick = '%s'", nickname);
-	retval = sqlite3_exec(db, statement, 0, 0, 0);
+	char statement[10000];
+	sprintf(statement, "SELECT * FROM keys WHERE nick = '%s'\0", nickname);
+	sqlite3_prepare_v2(db, statement, strlen(statement) + 1 , &stmt, NULL);
 	cols = sqlite3_column_count(stmt);
 	if (cols < 2) {
 		return NEW_CONTACT;
 	} else {
 		sprintf(
 				statement,
-				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
-		retval = sqlite3_prepare_v2(db, statement, -1, stmt, statement);
+				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'\0", nickname, e, n);
+		sqlite3_prepare_v2(db, statement, strlen(statement) + 1 , &stmt, NULL);
 		int cols = sqlite3_column_count(stmt);
 		if (cols < 2) {
 			return NOT_VERIFIED;
