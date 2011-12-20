@@ -289,14 +289,12 @@ void myChat(int sock_nr) {
 					printf("client - read\n");
 
 					//read data from open socket
-					result = read(sockfd, msg, MSG_SIZE);
-					msg[result] = '\0'; /* Terminate string with null */
+					int msg_len;
+					recv(sock_nr, &msg_len, sizeof msg_len, 0);
+					msg_len = ntohl(msg_len);
+					recv(sock_nr, msg, msg_len, 0);
+					msg = decrypt_msg(msg, msg_len, keyD, keyN);
 					printf("%s", msg + 1);
-
-					if (msg[0] == 'X') {
-						close(sockfd);
-						exit(0);
-					}
 				} else if (fd == 0) { /*process keyboard activiy*/
 					printf("client - send\n");
 
@@ -311,9 +309,11 @@ void myChat(int sock_nr) {
 						/* sprintf(kb_msg,"%s",alias);
 						 msg[result]='\0';
 						 strcat(kb_msg,msg+1);*/
-
-						sprintf(msg, "M%s", kb_msg);
-						write(sockfd, msg, strlen(msg));
+						int msg_len;
+						encrypt_msg(msg, msg_len, remoteKeyE, remoteKeyN);
+						msg_len = htonl(msg_len);
+						send(sock_nr, &msg_len, sizeof msg_len, 0);
+						send(sock_nr, msg, strlen(msg), 0);
 					}
 				}
 			}
@@ -322,11 +322,11 @@ void myChat(int sock_nr) {
 	}
 }
 
-void encrypt_msg(char* message, BIGNUM* n, BIGNUM* d) {
+void encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
 
 }
 
-char* decrypt_msg(char* cipher, BIGNUM* e, BIGNUM* n) {
+char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* d, BIGNUM* n) {
 	return cipher;
 }
 
