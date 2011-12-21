@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "main.h"
 #include "sqilte.h"
@@ -43,19 +44,20 @@ int main(int argc, char *argv[]) {
 						myChat(socket);
 						return 0;
 					} else {
-						if (argc == 2 && strcmp(argv[1], "-a")) {
+						if (argc == 2 && strcmp(argv[1], "-a") == 0) {
 							/* Implement print all clients*/
-						}
-						else {
-							if(argc == 2 && strcmp(argv[1], "-t")) {
+						} else {
+							if (argc == 2 && strcmp(argv[1], "-t") == 0) {
 								char* msg = "Testnachricht!";
-								BIGNUM *e, *N, *d;
+								BIGNUM *e = NULL, *N = NULL, *d = NULL;
 								printf("Original Plain text: %s \n", msg);
-								_generate_keys(e,d,N);
+								_generate_keys(&e, &d, &N);
 								char* cipher = encrypt_msg(msg, e, N);
-								printf("Cipher text: %s \n", cipher);
-								char* plaintext = decrypt_msg(cipher, strlen(msg), d, N);
-								printf("Decrypted plain text: %s \n", plaintext);
+								//printf("Cipher text: %s \n", cipher);
+								char* plaintext = decrypt_msg(cipher,
+										strlen(msg), d, N);
+								printf("Decrypted plain text: %s \n",
+										plaintext);
 							}
 						}
 					}
@@ -78,46 +80,45 @@ void print_help() {
 					"-i <nickname>\t\t Create keys for local user and use nickname\n"
 					"-r <nickname>\t\t Change nickname of local user to <nickname>\n"
 					"-a \t\t\t Show all known clients with their responding public-key\n"
-					"-t \t\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message"
-			);
+					"-t \t\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message");
 }
 
-void _generate_keys(BIGNUM* newE, BIGNUM* newD, BIGNUM* newN) {
+void _generate_keys(BIGNUM** newE, BIGNUM** newD, BIGNUM** newN) {
 	BN_CTX* bn_ctx = BN_CTX_new();
-		BN_CTX_init(bn_ctx);
-		BIGNUM* p = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
-		BIGNUM* q = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
-		BIGNUM* N = BN_new();
-		BN_mul(N, p, q, bn_ctx);
+	BN_CTX_init(bn_ctx);
+	BIGNUM* p = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
+	BIGNUM* q = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
+	BIGNUM* N = BN_new();
+	BN_mul(N, p, q, bn_ctx);
 
-		BIGNUM* pMinusOne = BN_CTX_get(bn_ctx);
-		BN_sub(pMinusOne, p, BN_value_one());
+	BIGNUM* pMinusOne = BN_CTX_get(bn_ctx);
+	BN_sub(pMinusOne, p, BN_value_one());
 
-		BIGNUM* qMinusOne = BN_CTX_get(bn_ctx);
-		BN_sub(qMinusOne, q, BN_value_one());
+	BIGNUM* qMinusOne = BN_CTX_get(bn_ctx);
+	BN_sub(qMinusOne, q, BN_value_one());
 
-		BIGNUM* eulerN = BN_CTX_get(bn_ctx);
-		BN_mul(eulerN, pMinusOne, qMinusOne, bn_ctx);
-		BIGNUM* e = BN_CTX_get(bn_ctx);
-		BIGNUM* gcd = BN_CTX_get(bn_ctx);
-		do {
-			BN_generate_prime(e, 512, 0, NULL, NULL, NULL, NULL);
-			BN_gcd(gcd, e, eulerN, bn_ctx);
-		} while (!BN_is_one(gcd));
+	BIGNUM* eulerN = BN_CTX_get(bn_ctx);
+	BN_mul(eulerN, pMinusOne, qMinusOne, bn_ctx);
+	BIGNUM* e = BN_CTX_get(bn_ctx);
+	BIGNUM* gcd = BN_CTX_get(bn_ctx);
+	do {
+		BN_generate_prime(e, 512, 0, NULL, NULL, NULL, NULL);
+		BN_gcd(gcd, e, eulerN, bn_ctx);
+	} while (!BN_is_one(gcd));
 
-		BIGNUM* d = BN_CTX_get(bn_ctx);
+	BIGNUM* d = BN_CTX_get(bn_ctx);
 
-		BN_mod_inverse(d, e, eulerN, bn_ctx);
-		newD = d;
-		newE = e;
-		newN = N;
+	BN_mod_inverse(d, e, eulerN, bn_ctx);
+	*newD = d;
+	*newE = e;
+	*newN = N;
 }
 
 void generate_keys(char* nickname) {
 	sqlite3 *db;
 	open_db(&db);
 	BIGNUM *e, *N, *d;
-	_generate_keys(e,d,N);
+	_generate_keys(&e, &d, &N);
 
 	char* e_as_hex = BN_bn2hex(e);
 	char* n_as_hex = BN_bn2hex(N);
@@ -348,16 +349,24 @@ char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
 	BN_CTX* bn_ctx = BN_CTX_new();
 	BN_CTX_init(bn_ctx);
 	const int length_msg = strlen(message);
-	int chunk_size;
+	char* buffer = malloc(length_msg);
+	BIGNUM* byteSize = BN_CTX_get(bn_ctx);
+	BN_copy(byteSize, n);
+	BN_div_word(byteSize, 256);
+	unsigned long chunk_size = BN_get_word(byteSize);
+	const unsigned long num_chunks = ceil(((double)length_msg) / chunk_size);
 	int i;
-	for (i = 0; i < (length_msg / chunk_size + 1); i++) {
-		BIGNUM* plaintext_chunk = BN_bin2bn(message + i * chunk_size,
-				chunk_size, NULL);
+	for (i = 0; i < num_chunks; i++) {
+		BIGNUM* plaintext_chunk = BN_CTX_get(bn_ctx);
+		BN_bin2bn(message + i * chunk_size,
+				chunk_size, plaintext_chunk);
 		BIGNUM * plain_exp_e = BN_CTX_get(bn_ctx);
 		BN_exp(plain_exp_e, plaintext_chunk, e, bn_ctx);
 		BIGNUM* cipher = BN_CTX_get(bn_ctx);
 		BN_mod(cipher, plain_exp_e, n, bn_ctx);
+		BN_bn2bin(cipher, buffer[i*chunk_size]);
 	}
+	return buffer;
 
 }
 
@@ -374,6 +383,7 @@ char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* d, BIGNUM* n) {
 		BIGNUM* plain_text = BN_CTX_get(bn_ctx);
 		BN_mod(plain_text, cipher_exp_d, n, bn_ctx);
 	}
+	return buffer;
 }
 
 void DieWithError(char* string) {
