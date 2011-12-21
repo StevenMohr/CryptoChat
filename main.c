@@ -49,13 +49,13 @@ int main(int argc, char *argv[]) {
 						} else {
 							if (argc == 2 && strcmp(argv[1], "-t") == 0) {
 								char* msg = "Testnachricht!";
+								int cipher_len;
 								BIGNUM *e = NULL, *N = NULL, *d = NULL;
 								printf("Original Plain text: %s \n", msg);
 								_generate_keys(&e, &d, &N);
-								char* cipher = encrypt_msg(msg, e, N);
-								//printf("Cipher text: %s \n", cipher);
+								char* cipher = encrypt_msg(msg, e, N, &cipher_len);
 								char* plaintext = decrypt_msg(cipher,
-										strlen(msg), d, N);
+										cipher_len, d, N);
 								printf("Decrypted plain text: %s \n",
 										plaintext);
 							}
@@ -333,7 +333,7 @@ void myChat(int sock_nr) {
 						 msg[result]='\0';
 						 strcat(kb_msg,msg+1);*/
 						int msg_len;
-						encrypt_msg(msg, remoteKeyE, remoteKeyN);
+						encrypt_msg(msg, remoteKeyE, remoteKeyN, &msg_len); //TODO: Check it!
 						msg_len = htonl(msg_len);
 						send(sock_nr, &msg_len, sizeof msg_len, 0);
 						send(sock_nr, msg, strlen(msg), 0);
@@ -345,26 +345,24 @@ void myChat(int sock_nr) {
 	}
 }
 
-char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
+char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n, int* cipher_len) {
 	BN_CTX* bn_ctx = BN_CTX_new();
 	BN_CTX_init(bn_ctx);
+	int chunk_size = BN_num_bytes(n);
 	const int length_msg = strlen(message);
-	char* buffer = malloc(length_msg);
-	BIGNUM* byteSize = BN_CTX_get(bn_ctx);
-	BN_copy(byteSize, n);
-	BN_div_word(byteSize, 256);
-	unsigned long chunk_size = BN_get_word(byteSize);
-	const unsigned long num_chunks = ceil(((double)length_msg) / chunk_size);
+	const int num_chunks = ceil(((double)length_msg) / chunk_size);
+	char* buffer = malloc(num_chunks * chunk_size);
+	*cipher_len = num_chunks * chunk_size;
+	printf("lenght_msg: %d chunksize:%d num_chunks:%d \n", length_msg, chunk_size, num_chunks);
+
 	int i;
 	for (i = 0; i < num_chunks; i++) {
 		BIGNUM* plaintext_chunk = BN_CTX_get(bn_ctx);
-		BN_bin2bn(message + i * chunk_size,
-				chunk_size, plaintext_chunk);
-		BIGNUM * plain_exp_e = BN_CTX_get(bn_ctx);
-		BN_exp(plain_exp_e, plaintext_chunk, e, bn_ctx);
+		plaintext_chunk = BN_bin2bn(message + i * chunk_size,
+				chunk_size, NULL);
 		BIGNUM* cipher = BN_CTX_get(bn_ctx);
-		BN_mod(cipher, plain_exp_e, n, bn_ctx);
-		BN_bn2bin(cipher, buffer[i*chunk_size]);
+		BN_mod_exp(cipher, plaintext_chunk, e, n, bn_ctx);
+		BN_bn2bin(cipher, &buffer[i*chunk_size]);
 	}
 	return buffer;
 
@@ -373,15 +371,15 @@ char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
 char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* d, BIGNUM* n) {
 	BN_CTX* bn_ctx = BN_CTX_new();
 	BN_CTX_init(bn_ctx);
-	char* buffer = malloc(cipher_len);
-	int chunk_size;
+	int chunk_size = BN_num_bytes(n);
+	const int num_chunks = ceil(((double)cipher_len) / chunk_size);
+	char* buffer = malloc(num_chunks * chunk_size);
 	int i;
-	for (i = 0; i < cipher_len / chunk_size; i++) {
+	for (i = 0; i < num_chunks; i++) {
 		BIGNUM* chunk = BN_bin2bn(cipher + (i * chunk_size), chunk_size, NULL);
-		BIGNUM * cipher_exp_d = BN_CTX_get(bn_ctx);
-		BN_exp(cipher_exp_d, chunk, d, bn_ctx);
 		BIGNUM* plain_text = BN_CTX_get(bn_ctx);
-		BN_mod(plain_text, cipher_exp_d, n, bn_ctx);
+		BN_mod_exp(plain_text, chunk, d, n, bn_ctx);
+		BN_bn2bin(plain_text, &buffer[i*chunk_size]);
 	}
 	return buffer;
 }

@@ -19,7 +19,7 @@ void myChat(int sock_nr);
 void DieWithError(char* string);
 void _generate_keys(BIGNUM** newE, BIGNUM** newD, BIGNUM** newN);
 
-char* encrypt_msg(char* message, BIGNUM* n, BIGNUM* d);
+char* encrypt_msg(char* message, BIGNUM* n, BIGNUM* d, int* cipher_length);
 char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* e, BIGNUM* n);
 
 #endif /* MAIN_H_ */
