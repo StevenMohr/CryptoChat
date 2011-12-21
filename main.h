@@ -17,9 +17,9 @@ int myConnect(char* host, char* port);
 void myChat(int sock_nr);
 
 void DieWithError(char* string);
-void extended_euclid(BIGNUM* a, BIGNUM* b, BIGNUM* d, BIGNUM* s, BIGNUM* t);
+void _generate_keys(BIGNUM* newE, BIGNUM* newD, BIGNUM* newN);
 
-void encrypt_msg(char* message, BIGNUM* n, BIGNUM* d);
-char* decrypt_msg(char* cipher, BIGNUM* e, BIGNUM* n);
+char* encrypt_msg(char* message, BIGNUM* n, BIGNUM* d);
+char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* e, BIGNUM* n);
 
 #endif /* MAIN_H_ */

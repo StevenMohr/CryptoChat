@@ -46,6 +46,18 @@ int main(int argc, char *argv[]) {
 						if (argc == 2 && strcmp(argv[1], "-a")) {
 							/* Implement print all clients*/
 						}
+						else {
+							if(argc == 2 && strcmp(argv[1], "-t")) {
+								char* msg = "Testnachricht!";
+								BIGNUM *e, *N, *d;
+								printf("Original Plain text: %s \n", msg);
+								_generate_keys(e,d,N);
+								char* cipher = encrypt_msg(msg, e, N);
+								printf("Cipher text: %s \n", cipher);
+								char* plaintext = decrypt_msg(cipher, strlen(msg), d, N);
+								printf("Decrypted plain text: %s \n", plaintext);
+							}
+						}
 					}
 				}
 
@@ -65,38 +77,48 @@ void print_help() {
 					"-c <hostname> <port>\t Connect to remote side using hostname and port.\n"
 					"-i <nickname>\t\t Create keys for local user and use nickname\n"
 					"-r <nickname>\t\t Change nickname of local user to <nickname>\n"
-					"-a \t\t\t Show all known clients with their responding public-key");
+					"-a \t\t\t Show all known clients with their responding public-key\n"
+					"-t \t\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message"
+			);
+}
+
+void _generate_keys(BIGNUM* newE, BIGNUM* newD, BIGNUM* newN) {
+	BN_CTX* bn_ctx = BN_CTX_new();
+		BN_CTX_init(bn_ctx);
+		BIGNUM* p = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
+		BIGNUM* q = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
+		BIGNUM* N = BN_new();
+		BN_mul(N, p, q, bn_ctx);
+
+		BIGNUM* pMinusOne = BN_CTX_get(bn_ctx);
+		BN_sub(pMinusOne, p, BN_value_one());
+
+		BIGNUM* qMinusOne = BN_CTX_get(bn_ctx);
+		BN_sub(qMinusOne, q, BN_value_one());
+
+		BIGNUM* eulerN = BN_CTX_get(bn_ctx);
+		BN_mul(eulerN, pMinusOne, qMinusOne, bn_ctx);
+		BIGNUM* e = BN_CTX_get(bn_ctx);
+		BIGNUM* gcd = BN_CTX_get(bn_ctx);
+		do {
+			BN_generate_prime(e, 512, 0, NULL, NULL, NULL, NULL);
+			BN_gcd(gcd, e, eulerN, bn_ctx);
+		} while (!BN_is_one(gcd));
+
+		BIGNUM* d = BN_CTX_get(bn_ctx);
+
+		BN_mod_inverse(d, e, eulerN, bn_ctx);
+		newD = d;
+		newE = e;
+		newN = N;
 }
 
 void generate_keys(char* nickname) {
 	sqlite3 *db;
-	BN_CTX* bn_ctx = BN_CTX_new();
-	BN_CTX_init(bn_ctx);
-	BIGNUM* p = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
-	BIGNUM* q = BN_generate_prime(NULL, 1024, 0, NULL, NULL, NULL, NULL);
-	BIGNUM* N = BN_new();
-	BN_mul(N, p, q, bn_ctx);
-
-	BIGNUM* pMinusOne = BN_CTX_get(bn_ctx);
-	BN_sub(pMinusOne, p, BN_value_one());
-
-	BIGNUM* qMinusOne = BN_CTX_get(bn_ctx);
-	BN_sub(qMinusOne, q, BN_value_one());
-
-	BIGNUM* eulerN = BN_CTX_get(bn_ctx);
-	BN_mul(eulerN, pMinusOne, qMinusOne, bn_ctx);
-	BIGNUM* e = BN_CTX_get(bn_ctx);
-	BIGNUM* gcd = BN_CTX_get(bn_ctx);
-	do {
-		BN_generate_prime(e, 512, 0, NULL, NULL, NULL, NULL);
-		BN_gcd(gcd, e, eulerN, bn_ctx);
-	} while (!BN_is_one(gcd));
-
-	BIGNUM* d = BN_CTX_get(bn_ctx);
-
-	BN_mod_inverse(d, e, eulerN, bn_ctx);
-
 	open_db(&db);
+	BIGNUM *e, *N, *d;
+	_generate_keys(e,d,N);
+
 	char* e_as_hex = BN_bn2hex(e);
 	char* n_as_hex = BN_bn2hex(N);
 	char* d_as_hex = BN_bn2hex(d);
@@ -233,7 +255,7 @@ void myChat(int sock_nr) {
 	binaryRemoteE = malloc(remoteSizeKeyE);
 	memset(binaryRemoteE, 0, remoteSizeKeyE);
 	bytesToRead = remoteSizeKeyE;
-	recv(sock_nr, binaryRemoteE , remoteSizeKeyE, 0);
+	recv(sock_nr, binaryRemoteE, remoteSizeKeyE, 0);
 	remoteKeyE = BN_bin2bn(binaryRemoteE, remoteSizeKeyE, NULL);
 
 	fflush(stdout);
@@ -247,7 +269,6 @@ void myChat(int sock_nr) {
 	remoteSizeNick = ntohl(remoteSizeNick);
 	remoteNickName = malloc(remoteSizeNick);
 	recv(sock_nr, remoteNickName, remoteSizeNick, 0);
-
 
 	free(binaryKeyE);
 	free(binaryKeyN);
@@ -293,8 +314,9 @@ void myChat(int sock_nr) {
 					recv(sock_nr, &msg_len, sizeof msg_len, 0);
 					msg_len = ntohl(msg_len);
 					recv(sock_nr, msg, msg_len, 0);
-					msg = decrypt_msg(msg, msg_len, keyD, keyN);
-					printf("%s", msg + 1);
+					char* plaintext;
+					plaintext = decrypt_msg(msg, msg_len, keyD, keyN);
+					printf("%s", plaintext);
 				} else if (fd == 0) { /*process keyboard activiy*/
 					printf("client - send\n");
 
@@ -310,7 +332,7 @@ void myChat(int sock_nr) {
 						 msg[result]='\0';
 						 strcat(kb_msg,msg+1);*/
 						int msg_len;
-						encrypt_msg(msg, msg_len, remoteKeyE, remoteKeyN);
+						encrypt_msg(msg, remoteKeyE, remoteKeyN);
 						msg_len = htonl(msg_len);
 						send(sock_nr, &msg_len, sizeof msg_len, 0);
 						send(sock_nr, msg, strlen(msg), 0);
@@ -322,12 +344,36 @@ void myChat(int sock_nr) {
 	}
 }
 
-void encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
+char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n) {
+	BN_CTX* bn_ctx = BN_CTX_new();
+	BN_CTX_init(bn_ctx);
+	const int length_msg = strlen(message);
+	int chunk_size;
+	int i;
+	for (i = 0; i < (length_msg / chunk_size + 1); i++) {
+		BIGNUM* plaintext_chunk = BN_bin2bn(message + i * chunk_size,
+				chunk_size, NULL);
+		BIGNUM * plain_exp_e = BN_CTX_get(bn_ctx);
+		BN_exp(plain_exp_e, plaintext_chunk, e, bn_ctx);
+		BIGNUM* cipher = BN_CTX_get(bn_ctx);
+		BN_mod(cipher, plain_exp_e, n, bn_ctx);
+	}
 
 }
 
 char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* d, BIGNUM* n) {
-	return cipher;
+	BN_CTX* bn_ctx = BN_CTX_new();
+	BN_CTX_init(bn_ctx);
+	char* buffer = malloc(cipher_len);
+	int chunk_size;
+	int i;
+	for (i = 0; i < cipher_len / chunk_size; i++) {
+		BIGNUM* chunk = BN_bin2bn(cipher + (i * chunk_size), chunk_size, NULL);
+		BIGNUM * cipher_exp_d = BN_CTX_get(bn_ctx);
+		BN_exp(cipher_exp_d, chunk, d, bn_ctx);
+		BIGNUM* plain_text = BN_CTX_get(bn_ctx);
+		BN_mod(plain_text, cipher_exp_d, n, bn_ctx);
+	}
 }
 
 void DieWithError(char* string) {
