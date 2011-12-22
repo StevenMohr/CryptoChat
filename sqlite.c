@@ -29,7 +29,7 @@ void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d) {
 	sqlite3_stmt *stmt;
 	char statement[10000];
 	char* query = "SELECT * from keys where id=0";
-	retval = sqlite3_prepare_v2(&db, query, -1, &stmt, 0);
+	retval = sqlite3_prepare_v2(db, query, -1, &stmt, 0); //changed while fixing code .. TEST IT!
 
 	// Read the number of rows fetched
 	int cols = sqlite3_column_count(stmt);
@@ -56,10 +56,10 @@ void insert_new_contact(sqlite3* db, char* nickname, char* e, char* n) {
 }
 
 int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
-	int retval, cols;
+	int cols;
 	sqlite3_stmt *stmt;
 	char statement[10000];
-	sprintf(statement, "SELECT * FROM keys WHERE nick = '%s'\0", nickname);
+	sprintf(statement, "SELECT * FROM keys WHERE nick = '%s'", nickname);
 	sqlite3_prepare_v2(db, statement, strlen(statement) + 1 , &stmt, NULL);
 	cols = sqlite3_column_count(stmt);
 	if (cols < 2) {
@@ -67,7 +67,7 @@ int verify_contact(sqlite3* db, char* nickname, char* e, char* n) {
 	} else {
 		sprintf(
 				statement,
-				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'\0", nickname, e, n);
+				"SELECT * FROM keys WHERE nick = '%s' AND e = '%s' AND n ='%s'", nickname, e, n);
 		sqlite3_prepare_v2(db, statement, strlen(statement) + 1 , &stmt, NULL);
 		int cols = sqlite3_column_count(stmt);
 		if (cols < 2) {
@@ -83,7 +83,7 @@ void get_own_data(sqlite3* db, char** nickname, BIGNUM* e, BIGNUM* n, BIGNUM* d)
 	char* statement = "SELECT * FROM keys WHERE id = 0";
 	sqlite3_prepare_v2(db, statement, strlen(statement) + 1 , &stmt, NULL);
 	sqlite3_step(stmt);
-	*nickname = sqlite3_column_text(stmt, 1);
+	*nickname = (char*) sqlite3_column_text(stmt, 1);
 	BN_hex2bn(&e, (const char*) sqlite3_column_text(stmt, 2));
 	BN_hex2bn(&n, (const char*) sqlite3_column_text(stmt, 3));
 	BN_hex2bn(&d, (const char*) sqlite3_column_text(stmt, 4));
