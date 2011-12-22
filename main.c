@@ -16,11 +16,31 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <math.h>
+#include <signal.h>
 
 #include "main.h"
 #include "sqilte.h"
 
+int client_socket = -1; // Global socket that will be closed on CTRL+C
+int end = 0; // Variable to terminate main loop
+
+/**
+ * Handle CTRL+C from user.
+ *
+ **/
+void handleUserInterrupt(int sig) {
+	if(client_socket != -1) {
+		close(client_socket);
+	}
+	printf("Bye bye!");
+	end = 1;
+}
+
+
 int main(int argc, char *argv[]) {
+	signal(SIGTERM, handleUserInterrupt);
+	signal(SIGINT, handleUserInterrupt);
+	signal(SIGABRT, handleUserInterrupt);
 	RAND_load_file("seed-file.dat", -1);
 	if (argc == 2 && strcmp(argv[1], "-h") == 0) {
 		print_help();
@@ -38,13 +58,13 @@ int main(int argc, char *argv[]) {
 					printf(
 							"\n Welcome to CryptoChat!\nWaiting for chat partner on port %s ...",
 							argv[2]);
-					int socket = myListen(argv[2]);
-					myChat(socket);
+					client_socket = myListen(argv[2]);
+					myChat(client_socket);
 					return 0;
 				} else {
 					if (argc == 4 && strcmp(argv[1], "-c") == 0) {
-						int socket = myConnect(argv[2], argv[3]);
-						myChat(socket);
+						client_socket = myConnect(argv[2], argv[3]);
+						myChat(client_socket);
 						return 0;
 					} else {
 						if (argc == 2 && strcmp(argv[1], "-a") == 0) {
@@ -62,6 +82,8 @@ int main(int argc, char *argv[]) {
 										cipher_len, d, N);
 								printf("Decrypted plain text: %s \n",
 										plaintext);
+								free(plaintext);
+								free(cipher);
 								return 0;
 							}
 						}
@@ -84,7 +106,6 @@ void print_help() {
 					"-c <hostname> <port>\t Connect to remote side using hostname and port.\n"
 					"-i <nickname>\t\t Create keys for local user and use nickname\n"
 					"-r <nickname>\t\t Change nickname of local user to <nickname>\n"
-					"-a \t\t\t Show all known clients with their responding public-key\n"
 					"-t <test_msg>\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message");
 }
 
@@ -148,24 +169,16 @@ int myListen(char* port_as_char) {
 
 	sscanf(port_as_char, "%i", &port);
 
-	/* Create socket for incoming connections */
-	if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-		DieWithError("socket() failed");
+	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	/* Construct local address structure */
 	memset(&echoServAddr, 0, sizeof(echoServAddr));
-	/* Zero out structure */
 	echoServAddr.sin_family = AF_INET; /* Internet address family */
 	echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
 	echoServAddr.sin_port = htons(port); /* Local port */
 
-	/* Bind to the local address */
-	if (bind(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
-		DieWithError("bind() failed");
+	bind(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr));
 
-	/* Mark the socket so it will listen for incoming connections */
-	if (listen(sock, 1) < 0)
-		DieWithError("listen() failed");
+	listen(sock, 1);
 	unsigned int addr_size = sizeof their_addr;
 	int new_sock = accept(sock, (struct sockaddr *) &their_addr, &addr_size);
 	return new_sock;
@@ -180,7 +193,6 @@ int myConnect(char* host, char* port_as_char) {
 	/* create socket */
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
-	/* Name the socket, as agreed with the server */
 	hostinfo = gethostbyname(host); /* look for host's name */
 	server.sin_addr = *(struct in_addr *) *hostinfo->h_addr_list;
 	server.sin_family = AF_INET;
@@ -196,9 +208,6 @@ void myChat(int sock_nr) {
 	BN_CTX* bn_ctx = BN_CTX_new();
 	BN_CTX_init(bn_ctx);
 	int result = 0;
-	int end = 0;
-
-	//Sende Key
 	BIGNUM* keyE = BN_CTX_get(bn_ctx);
 	int sizeKeyE = 0;
 	int sizeKeyN = 0;
@@ -320,6 +329,7 @@ void myChat(int sock_nr) {
 						plaintext = decrypt_msg((unsigned char*) msg, msg_len, keyD, keyN);
 						printf("%s: %s", remoteNickName, plaintext);
 						fflush(stdout);
+						free(plaintext);
 					}
 
 				} else if (fd == 0) { /*process keyboard activiy*/
@@ -331,6 +341,7 @@ void myChat(int sock_nr) {
 					msg_len = htonl(msg_len);
 					send(sock_nr, &msg_len, sizeof msg_len, 0);
 					send(sock_nr, cipher, msg_len, 0);
+					free(cipher);
 
 				}
 			}
