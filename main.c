@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				if (argc == 3 && strcmp(argv[1], "-l") == 0) {
 					printf(
-							"\n Welcome to CryptoChat!\nWaiting for chat partner on port %s ...",
+							"\n Welcome to CryptoChat!\nWaiting for chat partner on port %s ...\n",
 							argv[2]);
 					fflush(stdout);
 					client_socket = myListen(argv[2]);
@@ -286,7 +286,7 @@ void myChat(int sock_nr) {
 	free(binaryRemoteE);
 	free(binaryRemoteN);
 
-	printf("Connected with %s", remoteNickName);
+	printf("\nConnected with %s\n", remoteNickName);
 	fflush(stdout);
 
 	result = verify_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
@@ -329,7 +329,7 @@ void myChat(int sock_nr) {
 					if (readBytes > 0) {
 						unsigned char* plaintext;
 						plaintext = decrypt_msg((unsigned char*) msg, msg_len, keyD, keyN);
-						printf("%s: %s", remoteNickName, plaintext);
+						printf("%s: %s\n", remoteNickName, plaintext);
 						fflush(stdout);
 						free(plaintext);
 					}

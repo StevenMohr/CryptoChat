@@ -37,7 +37,7 @@ void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d) {
 	sqlite3_stmt *stmt;
 	char statement[10000];
 	char* query = "SELECT * from keys where id=0";
-	retval = sqlite3_prepare_v2(db, query, -1, &stmt, 0); //changed while fixing code .. TEST IT!
+	retval = sqlite3_prepare_v2(db, query, strlen(statement), &stmt, 0); //changed while fixing code .. TEST IT!
 
 	// Read the number of rows fetched
 	int cols = sqlite3_column_count(stmt);
