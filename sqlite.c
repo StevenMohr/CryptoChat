@@ -11,7 +11,7 @@
 #include <pwd.h>
 #include <unistd.h>
 
-#import "sqilte.h"
+#include "sqilte.h"
 
 void open_db(sqlite3** db) {
 	struct passwd *pw = getpwuid(getuid());
