@@ -9,6 +9,7 @@
 #import <string.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <unistd.h>
 
 #import "sqilte.h"
 
@@ -16,7 +17,7 @@ void open_db(sqlite3** db) {
 	struct passwd *pw = getpwuid(getuid());
 	const char *homedir = pw->pw_dir;
 	char buffer[1000];
-	buffer[0] = "\0";
+	buffer[0] = '\0';
 	strcat(buffer, homedir);
 	char create_table[1000] =
 			"CREATE TABLE IF NOT EXISTS keys (id INTEGER PRIMARY KEY AUTOINCREMENT, nick TEXT NOT NULL, e TEXT NOT NULL, n TEXT NOT NULL, d TEXT);";
