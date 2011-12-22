@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
 					printf(
 							"\n Welcome to CryptoChat!\nWaiting for chat partner on port %s ...",
 							argv[2]);
+					fflush(stdout);
 					client_socket = myListen(argv[2]);
 					myChat(client_socket);
 					return 0;
@@ -286,6 +287,7 @@ void myChat(int sock_nr) {
 	free(binaryRemoteN);
 
 	printf("Connected with %s", remoteNickName);
+	fflush(stdout);
 
 	result = verify_contact(db, remoteNickName, BN_bn2hex(remoteKeyE),
 			BN_bn2hex(remoteKeyN));
