@@ -47,17 +47,19 @@ int main(int argc, char *argv[]) {
 						if (argc == 2 && strcmp(argv[1], "-a") == 0) {
 							/* Implement print all clients*/
 						} else {
-							if (argc == 2 && strcmp(argv[1], "-t") == 0) {
-								char* msg = "Testnachricht!";
+							if (argc == 3 && strcmp(argv[1], "-t") == 0) {
+								char* msg = argv[2];
 								int cipher_len;
 								BIGNUM *e = NULL, *N = NULL, *d = NULL;
 								printf("Original Plain text: %s \n", msg);
 								_generate_keys(&e, &d, &N);
-								char* cipher = encrypt_msg(msg, e, N, &cipher_len);
+								char* cipher = encrypt_msg(msg, e, N,
+										&cipher_len);
 								char* plaintext = decrypt_msg(cipher,
 										cipher_len, d, N);
 								printf("Decrypted plain text: %s \n",
 										plaintext);
+								return 0;
 							}
 						}
 					}
@@ -80,7 +82,7 @@ void print_help() {
 					"-i <nickname>\t\t Create keys for local user and use nickname\n"
 					"-r <nickname>\t\t Change nickname of local user to <nickname>\n"
 					"-a \t\t\t Show all known clients with their responding public-key\n"
-					"-t \t\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message");
+					"-t <test_msg>\t\t Test run of the RSA implementation. Generates keys and encrypts and decrypts a test message");
 }
 
 void _generate_keys(BIGNUM** newE, BIGNUM** newD, BIGNUM** newN) {
@@ -222,10 +224,6 @@ void myChat(int sock_nr) {
 	int nl_sizeKeyE = htonl(sizeKeyE);
 	int nl_sizeKeyN = htonl(sizeKeyN);
 	int nl_sizeNick = htonl(sizeNick);
-	printf("E: keysize: %d keyhtonl: %d local Key: %s\n\n", sizeKeyE,
-			nl_sizeKeyE, BN_bn2hex(keyE));
-	printf("N: keysize: %d keyhtonl: %d local Key: %s\n\n", sizeKeyN,
-			nl_sizeKeyN, BN_bn2hex(keyN));
 
 	send(sock_nr, &nl_sizeKeyE, sizeof(nl_sizeKeyE), 0);
 	send(sock_nr, binaryKeyE, sizeKeyE, 0);
@@ -308,39 +306,37 @@ void myChat(int sock_nr) {
 		for (fd = 0; fd < FD_SETSIZE; fd++) {
 			if (FD_ISSET(fd,&testfds)) {
 				if (fd == sockfd) { /*Accept data from open socket */
-					printf("client - read\n");
 
 					//read data from open socket
 					int msg_len;
 					recv(sock_nr, &msg_len, sizeof msg_len, 0);
 					msg_len = ntohl(msg_len);
-					recv(sock_nr, msg, msg_len, 0);
-					char* plaintext;
-					plaintext = decrypt_msg(msg, msg_len, keyD, keyN);
-					printf("%s", plaintext);
-				} else if (fd == 0) { /*process keyboard activiy*/
-					printf("client - send\n");
+					//char* buffer = malloc(msg_len);
+					int readBytes = recv(sock_nr, msg, msg_len, 0);
+					if (readBytes > 0) {
+						char* plaintext;
+						plaintext = decrypt_msg(msg, msg_len, keyD, keyN);
+						printf("%s: %s", remoteNickName, plaintext);
+						fflush(stdout);
+					}
 
+				} else if (fd == 0) { /*process keyboard activiy*/
 					fgets(kb_msg, MSG_SIZE + 1, stdin);
-					//printf("%s\n",kb_msg);
 					if (strcmp(kb_msg, "quit\n") == 0) {
 						sprintf(msg, "XClient is shutting down.\n");
-						write(sockfd, msg, strlen(msg));
+						//write(sockfd, msg, strlen(msg));
 						close(sockfd); //close the current client
 						exit(0); //end program
 					} else {
-						/* sprintf(kb_msg,"%s",alias);
-						 msg[result]='\0';
-						 strcat(kb_msg,msg+1);*/
-						int msg_len;
-						encrypt_msg(msg, remoteKeyE, remoteKeyN, &msg_len); //TODO: Check it!
+						int msg_len = 0;
+						char* cipher = encrypt_msg(kb_msg, remoteKeyE,
+								remoteKeyN, &msg_len); //TODO: Check it!
 						msg_len = htonl(msg_len);
 						send(sock_nr, &msg_len, sizeof msg_len, 0);
-						send(sock_nr, msg, strlen(msg), 0);
+						send(sock_nr, cipher, msg_len, 0);
 					}
 				}
 			}
-
 		}
 	}
 }
@@ -350,19 +346,17 @@ char* encrypt_msg(char* message, BIGNUM* e, BIGNUM* n, int* cipher_len) {
 	BN_CTX_init(bn_ctx);
 	int chunk_size = BN_num_bytes(n);
 	const int length_msg = strlen(message);
-	const int num_chunks = ceil(((double)length_msg) / chunk_size);
+	const int num_chunks = ceil(((double) length_msg) / chunk_size);
 	char* buffer = malloc(num_chunks * chunk_size);
 	*cipher_len = num_chunks * chunk_size;
-	printf("lenght_msg: %d chunksize:%d num_chunks:%d \n", length_msg, chunk_size, num_chunks);
 
 	int i;
 	for (i = 0; i < num_chunks; i++) {
 		BIGNUM* plaintext_chunk = BN_CTX_get(bn_ctx);
-		plaintext_chunk = BN_bin2bn(message + i * chunk_size,
-				chunk_size, NULL);
+		plaintext_chunk = BN_bin2bn(message + i * chunk_size, chunk_size, NULL);
 		BIGNUM* cipher = BN_CTX_get(bn_ctx);
 		BN_mod_exp(cipher, plaintext_chunk, e, n, bn_ctx);
-		BN_bn2bin(cipher, &buffer[i*chunk_size]);
+		BN_bn2bin(cipher, &buffer[i * chunk_size]);
 	}
 	return buffer;
 
@@ -372,14 +366,14 @@ char* decrypt_msg(char* cipher, int cipher_len, BIGNUM* d, BIGNUM* n) {
 	BN_CTX* bn_ctx = BN_CTX_new();
 	BN_CTX_init(bn_ctx);
 	int chunk_size = BN_num_bytes(n);
-	const int num_chunks = ceil(((double)cipher_len) / chunk_size);
+	const int num_chunks = ceil(((double) cipher_len) / chunk_size);
 	char* buffer = malloc(num_chunks * chunk_size);
 	int i;
 	for (i = 0; i < num_chunks; i++) {
 		BIGNUM* chunk = BN_bin2bn(cipher + (i * chunk_size), chunk_size, NULL);
 		BIGNUM* plain_text = BN_CTX_get(bn_ctx);
 		BN_mod_exp(plain_text, chunk, d, n, bn_ctx);
-		BN_bn2bin(plain_text, &buffer[i*chunk_size]);
+		BN_bn2bin(plain_text, &buffer[i * chunk_size]);
 	}
 	return buffer;
 }
