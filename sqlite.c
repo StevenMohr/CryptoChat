@@ -4,9 +4,9 @@
  *  Created on: 01.12.2011
  *      Author: steven
  */
-#import <sqlite3.h>
-#import <stdio.h>
-#import <string.h>
+#include <sqlite3.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <unistd.h>
@@ -26,7 +26,7 @@ void open_db(sqlite3** db) {
 }
 
 void update_own_nickname(char* new_nick, sqlite3* db) {
-	char* statement;
+	char* statement = NULL;
 	int retval;
 	sprintf(statement, "UPDATE keys SET nick='%s' where id=0", new_nick);
 	retval = sqlite3_exec(db, statement, 0, 0, 0);
@@ -57,7 +57,7 @@ void update_own_data(sqlite3* db, char* nickname, char* e, char* n, char* d) {
 
 void insert_new_contact(sqlite3* db, char* nickname, char* e, char* n) {
 	int retval;
-	char* statement;
+	char* statement = NULL;
 	sprintf(statement,
 			"INSERT INTO keys VALUES (0, '%s', '%s', '%s')", nickname, e, n);
 	retval = sqlite3_exec(db, statement, 0, 0, 0);

@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lcrypto -lsqlite3
+LIBS := -lcrypto -lsqlite3 -lm
 

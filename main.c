@@ -156,7 +156,7 @@ void generate_keys(char* nickname) {
 }
 
 void change_nickname(char* newNick) {
-	sqlite3** db;
+	sqlite3** db = NULL;
 	open_db(db);
 	update_own_nickname(newNick, *db);
 	sqlite3_close(*db);
